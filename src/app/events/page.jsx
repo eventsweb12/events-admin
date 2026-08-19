@@ -4,10 +4,40 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import "./events.css";
 
+const emptyForm = {
+  title: { geo: "", eng: "" },
+  client: { geo: "", eng: "" },
+  eventName: { geo: "", eng: "" },
+  venue: { geo: "", eng: "" },
+  format: { geo: "", eng: "" },
+  audience: { geo: "", eng: "" },
+  year: "",
+  role: { geo: "", eng: "" },
+  about: { geo: "", eng: "" },
+};
+
+function slugify(text) {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+// strip empty bilingual objects so we don't send { geo: "", eng: "" } for unfilled optional fields
+function cleanBilingual(obj) {
+  if (!obj) return undefined;
+  if (!obj.geo && !obj.eng) return undefined;
+  return obj;
+}
+
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
-  const [form, setForm] = useState({ title: "", description: "", date: "", location: "" });
+  const [form, setForm] = useState(emptyForm);
   const [imageFile, setImageFile] = useState(null);
+  const [galleryFiles, setGalleryFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -21,39 +51,91 @@ export default function EventsPage() {
     loadEvents();
   }, []);
 
+  function updateBilingual(field, lang, value) {
+    setForm({ ...form, [field]: { ...form[field], [lang]: value } });
+  }
+
+  async function uploadFile(file) {
+    const uploadData = new FormData();
+    uploadData.append("file", file);
+    const res = await fetch("/api/upload", { method: "POST", body: uploadData });
+    const result = await res.json();
+    if (!res.ok) throw new Error("upload failed");
+    return result.url;
+  }
+
   async function handleCreate(e) {
     e.preventDefault();
 
+    if (!form.eventName.geo && !form.eventName.eng) {
+      alert("ივენთის დასახელება სავალდებულოა");
+      return;
+    }
     if (!imageFile) {
       alert("მთავარი სურათი სავალდებულოა");
       return;
     }
 
     setLoading(true);
-    setUploading(true);
 
-    const uploadData = new FormData();
-    uploadData.append("file", imageFile);
+    try {
+      setUploading(true);
+      const mainImage = await uploadFile(imageFile);
 
-    const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadData });
-    const uploadResult = await uploadRes.json();
-    setUploading(false);
+      let gallery = [];
+      if (galleryFiles.length > 0) {
+        gallery = await Promise.all(galleryFiles.map(uploadFile));
+      }
+      setUploading(false);
 
-    if (!uploadRes.ok) {
+      const slug = slugify(form.eventName.eng || form.eventName.geo);
+
+      const payload = {
+        eventName: form.eventName,
+        mainImage,
+        gallery,
+        slug,
+      };
+
+      // only include optional fields if actually filled in
+      const title = cleanBilingual(form.title);
+      const client = cleanBilingual(form.client);
+      const venue = cleanBilingual(form.venue);
+      const format = cleanBilingual(form.format);
+      const audience = cleanBilingual(form.audience);
+      const role = cleanBilingual(form.role);
+      const about = cleanBilingual(form.about);
+
+      if (title) payload.title = title;
+      if (client) payload.client = client;
+      if (venue) payload.venue = venue;
+      if (format) payload.format = format;
+      if (audience) payload.audience = audience;
+      if (role) payload.role = role;
+      if (about) payload.about = about;
+      if (form.year) payload.year = Number(form.year);
+
+      const createRes = await fetch("/api/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!createRes.ok) {
+        const err = await createRes.json().catch(() => ({}));
+        alert(err.error || "ივენთის დამატება ვერ მოხერხდა");
+        setLoading(false);
+        return;
+      }
+
+      setForm(emptyForm);
+      setImageFile(null);
+      setGalleryFiles([]);
+      await loadEvents();
+    } catch (err) {
       alert("სურათის ატვირთვა ვერ მოხერხდა");
-      setLoading(false);
-      return;
     }
 
-    await fetch("/api/events", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, image: uploadResult.url }),
-    });
-
-    setForm({ title: "", description: "", date: "", location: "" });
-    setImageFile(null);
-    await loadEvents();
     setLoading(false);
   }
 
@@ -86,47 +168,171 @@ export default function EventsPage() {
         <div className="ev-create-card">
           <h2 className="ev-create-title">ახალი ივენთის დამატება</h2>
           <form onSubmit={handleCreate} className="ev-form">
+            {/* Title (optional) */}
             <div className="ev-field">
-              <label className="ev-field-label">სათაური<span className="required">*</span></label>
-              <input
-                className="ev-input"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="ev-field">
-              <label className="ev-field-label">აღწერა<span className="required">*</span></label>
-              <textarea
-                className="ev-textarea"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="ev-row">
-              <div className="ev-field">
-                <label className="ev-field-label">თარიღი<span className="required">*</span></label>
+              <label className="ev-field-label">სათაური<span className="optional">(არასავალდებულო)</span></label>
+              <div className="ev-lang-row">
                 <input
-                  type="date"
                   className="ev-input"
-                  value={form.date}
-                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  placeholder="ქართულად"
+                  value={form.title.geo}
+                  onChange={(e) => updateBilingual("title", "geo", e.target.value)}
+                />
+                <input
+                  className="ev-input"
+                  placeholder="English"
+                  value={form.title.eng}
+                  onChange={(e) => updateBilingual("title", "eng", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Client (optional) */}
+            <div className="ev-field">
+              <label className="ev-field-label">დამკვეთი<span className="optional">(არასავალდებულო)</span></label>
+              <div className="ev-lang-row">
+                <input
+                  className="ev-input"
+                  placeholder="ქართულად"
+                  value={form.client.geo}
+                  onChange={(e) => updateBilingual("client", "geo", e.target.value)}
+                />
+                <input
+                  className="ev-input"
+                  placeholder="English"
+                  value={form.client.eng}
+                  onChange={(e) => updateBilingual("client", "eng", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Venue (optional) */}
+            <div className="ev-field">
+              <label className="ev-field-label">ლოკაცია<span className="optional">(არასავალდებულო)</span></label>
+              <div className="ev-lang-row">
+                <input
+                  className="ev-input"
+                  placeholder="ქართულად"
+                  value={form.venue.geo}
+                  onChange={(e) => updateBilingual("venue", "geo", e.target.value)}
+                />
+                <input
+                  className="ev-input"
+                  placeholder="English"
+                  value={form.venue.eng}
+                  onChange={(e) => updateBilingual("venue", "eng", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Year (optional) */}
+            <div className="ev-field">
+              <label className="ev-field-label">წელი<span className="optional">(არასავალდებულო)</span></label>
+              <input
+                type="number"
+                className="ev-input"
+                value={form.year}
+                onChange={(e) => setForm({ ...form, year: e.target.value })}
+              />
+            </div>
+
+            {/* Event name (required) */}
+            <div className="ev-field">
+              <label className="ev-field-label">ივენთის დასახელება<span className="required">*</span></label>
+              <div className="ev-lang-row">
+                <input
+                  className="ev-input"
+                  placeholder="ქართულად"
+                  value={form.eventName.geo}
+                  onChange={(e) => updateBilingual("eventName", "geo", e.target.value)}
                   required
                 />
-              </div>
-              <div className="ev-field">
-                <label className="ev-field-label">ლოკაცია<span className="optional">(არასავალდებულო)</span></label>
                 <input
                   className="ev-input"
-                  value={form.location}
-                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  placeholder="English"
+                  value={form.eventName.eng}
+                  onChange={(e) => updateBilingual("eventName", "eng", e.target.value)}
                 />
               </div>
             </div>
 
+            {/* Format (optional) */}
+            <div className="ev-field">
+              <label className="ev-field-label">ფორმატი<span className="optional">(არასავალდებულო)</span></label>
+              <div className="ev-lang-row">
+                <input
+                  className="ev-input"
+                  placeholder="ქართულად"
+                  value={form.format.geo}
+                  onChange={(e) => updateBilingual("format", "geo", e.target.value)}
+                />
+                <input
+                  className="ev-input"
+                  placeholder="English"
+                  value={form.format.eng}
+                  onChange={(e) => updateBilingual("format", "eng", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Audience (optional) */}
+            <div className="ev-field">
+              <label className="ev-field-label">აუდიტორია<span className="optional">(არასავალდებულო)</span></label>
+              <div className="ev-lang-row">
+                <input
+                  className="ev-input"
+                  placeholder="ქართულად"
+                  value={form.audience.geo}
+                  onChange={(e) => updateBilingual("audience", "geo", e.target.value)}
+                />
+                <input
+                  className="ev-input"
+                  placeholder="English"
+                  value={form.audience.eng}
+                  onChange={(e) => updateBilingual("audience", "eng", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Role (optional) */}
+            <div className="ev-field">
+              <label className="ev-field-label">როლი<span className="optional">(არასავალდებულო)</span></label>
+              <div className="ev-lang-row">
+                <textarea
+                  className="ev-textarea"
+                  placeholder="ქართულად"
+                  value={form.role.geo}
+                  onChange={(e) => updateBilingual("role", "geo", e.target.value)}
+                />
+                <textarea
+                  className="ev-textarea"
+                  placeholder="English"
+                  value={form.role.eng}
+                  onChange={(e) => updateBilingual("role", "eng", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* About (optional) */}
+            <div className="ev-field">
+              <label className="ev-field-label">აღწერა<span className="optional">(არასავალდებულო)</span></label>
+              <div className="ev-lang-row">
+                <textarea
+                  className="ev-textarea"
+                  placeholder="ქართულად"
+                  value={form.about.geo}
+                  onChange={(e) => updateBilingual("about", "geo", e.target.value)}
+                />
+                <textarea
+                  className="ev-textarea"
+                  placeholder="English"
+                  value={form.about.eng}
+                  onChange={(e) => updateBilingual("about", "eng", e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Main image (required) */}
             <div className="ev-field">
               <label className="ev-field-label">მთავარი სურათი<span className="required">*</span></label>
               <input
@@ -138,8 +344,23 @@ export default function EventsPage() {
               />
             </div>
 
+            {/* Gallery (optional, multiple) */}
+            <div className="ev-field">
+              <label className="ev-field-label">დამატებითი ფოტოები<span className="optional">(არასავალდებულო)</span></label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="ev-file-input"
+                onChange={(e) => setGalleryFiles(Array.from(e.target.files || []))}
+              />
+              {galleryFiles.length > 0 && (
+                <p className="ev-hint">{galleryFiles.length} ფოტო არჩეულია</p>
+              )}
+            </div>
+
             <button type="submit" disabled={loading} className="ev-submit-btn">
-              {uploading ? "სურათი იტვირთება..." : loading ? "ემატება..." : "ივენთის დამატება"}
+              {uploading ? "სურათები იტვირთება..." : loading ? "ემატება..." : "ივენთის დამატება"}
             </button>
           </form>
         </div>
@@ -150,13 +371,15 @@ export default function EventsPage() {
           ) : (
             events.map((ev) => (
               <div key={ev._id} className="ev-item">
-                {ev.image && <img src={ev.image} alt={ev.title} className="ev-thumb" />}
+                {ev.mainImage && (
+                  <img src={ev.mainImage} alt={ev.eventName?.geo} className="ev-thumb" />
+                )}
                 <div className="ev-item-info">
-                  <h3 className="ev-item-title">{ev.title}</h3>
+                  <h3 className="ev-item-title">{ev.eventName?.geo}</h3>
                   <p className="ev-item-meta">
                     <CalendarSmallIcon />
-                    {new Date(ev.date).toLocaleDateString("ka-GE")}
-                    {ev.location ? ` · ${ev.location}` : ""}
+                    {ev.year || ""}
+                    {ev.venue?.geo ? ` · ${ev.venue.geo}` : ""}
                   </p>
                 </div>
                 <div className="ev-item-actions">

@@ -170,6 +170,18 @@
   }
 }
 
+.ev-lang-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .ev-lang-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 .ev-file-input {
   padding: 9px 14px;
   border-radius: 10px;

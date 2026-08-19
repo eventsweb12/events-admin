@@ -83,15 +83,20 @@ export default function DashboardPage() {
             ) : (
               events.slice(0, 5).map((ev) => (
                 <Link href={`/events/${ev._id}`} key={ev._id} className="dash-list-item">
-                  {ev.image ? (
-                    <img src={ev.image} alt="" className="dash-item-thumb" />
+                  {ev.mainImage ? (
+                    <img src={ev.mainImage} alt="" className="dash-item-thumb" />
                   ) : (
                     <div className="dash-item-thumb-placeholder"><CalendarIcon /></div>
                   )}
                   <div className="dash-item-info">
-                    <p className="dash-item-title">{ev.title}</p>
+                    <p className="dash-item-title">
+                      {ev.eventName?.geo || ev.eventName?.eng || "უსახელო ივენთი"}
+                    </p>
                     <p className="dash-item-meta">
-                      {new Date(ev.date).toLocaleDateString("ka-GE")}{ev.location ? ` · ${ev.location}` : ""}
+                      {ev.year ? ev.year : ""}
+                      {(ev.venue?.geo || ev.venue?.eng)
+                        ? ` · ${ev.venue?.geo || ev.venue?.eng}`
+                        : ""}
                     </p>
                   </div>
                   <div className="dash-item-chevron"><ChevronIcon /></div>
