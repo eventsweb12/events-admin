@@ -1,0 +1,11 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family: "FiraGO", sans-serif;
+  font-feature-settings: "case" on;
+  background: #ffffff;
+  color: #1f2328;
+}

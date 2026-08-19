@@ -1,0 +1,129 @@
+@import url('https://cdn.jsdelivr.net/npm/@fontsource/firago@5.2.5/index.min.css');
+
+.auth-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  font-family: "FiraGO", sans-serif;
+  font-feature-settings: "case" on;
+  color: #1f2328;
+  padding: 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 36px 32px;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  background: #f6f8fa;
+}
+
+.auth-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.auth-brand-mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #24292f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.auth-heading {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 4px;
+  text-align: center;
+}
+
+.auth-subtitle {
+  font-size: 13.5px;
+  color: #656d76;
+  margin: 0 0 28px;
+  text-align: center;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2328;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid #d0d7de;
+  background: #ffffff;
+  color: #1f2328;
+  font-family: inherit;
+  font-feature-settings: inherit;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.auth-input:focus {
+  border-color: #24292f;
+  box-shadow: 0 0 0 3px rgba(36, 41, 47, 0.08);
+}
+
+.auth-error {
+  font-size: 13px;
+  color: #cf222e;
+  margin: 0;
+}
+
+.auth-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 0 22px;
+  height: 42px;
+  border-radius: 999px;
+  border: none;
+  background: #24292f;
+  color: #fff;
+  font-family: inherit;
+  font-feature-settings: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background-color 150ms ease, opacity 150ms ease;
+}
+
+.auth-submit-btn:hover {
+  background: #32383f;
+}
+
+.auth-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
