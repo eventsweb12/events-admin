@@ -2,12 +2,21 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import RichTextEditor from "./RichTextEditor";
 import "./blog.css";
+
+const emptyForm = {
+  title: { ka: "", en: "" },
+  slug: "",
+  excerpt: { ka: "", en: "" },
+  content: { ka: "", en: "" },
+};
 
 export default function BlogPage() {
   const [posts, setPosts] = useState([]);
-  const [form, setForm] = useState({ title: "", slug: "", content: "" });
-  const [imageFile, setImageFile] = useState(null);
+  const [form, setForm] = useState(emptyForm);
+  const [activeLang, setActiveLang] = useState("ka");
+  const [images, setImages] = useState([]); // [{ url, alt: {ka, en} }]
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -21,36 +30,79 @@ export default function BlogPage() {
     loadPosts();
   }, []);
 
-  async function handleCreate(e) {
-    e.preventDefault();
-    setLoading(true);
+  function updateField(field, lang, value) {
+    setForm((prev) => ({
+      ...prev,
+      [field]: { ...prev[field], [lang]: value },
+    }));
+  }
 
-    let coverImage = "";
+  async function handleImageSelect(e) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
 
-    if (imageFile) {
-      setUploading(true);
+    setUploading(true);
+    const uploaded = [];
+
+    for (const file of files) {
       const uploadData = new FormData();
-      uploadData.append("file", imageFile);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: uploadData });
-      const uploadResult = await uploadRes.json();
-      setUploading(false);
-
-      if (!uploadRes.ok) {
-        alert("სურათის ატვირთვა ვერ მოხერხდა");
-        setLoading(false);
-        return;
+      uploadData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: uploadData });
+      const result = await res.json();
+      if (res.ok) {
+        uploaded.push({ url: result.url, alt: { ka: "", en: "" } });
       }
-      coverImage = uploadResult.url;
     }
 
-    await fetch("/api/blog", {
+    setImages((prev) => [...prev, ...uploaded]);
+    setUploading(false);
+    e.target.value = "";
+  }
+
+  function removeImage(index) {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function moveImage(index, direction) {
+    setImages((prev) => {
+      const next = [...prev];
+      const target = index + direction;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
+  async function handleCreate(e) {
+    e.preventDefault();
+
+    if (!form.title.ka || !form.title.en) {
+      alert("სათაური საჭიროა ორივე ენაზე");
+      return;
+    }
+    if (!form.content.ka || !form.content.en) {
+      alert("კონტენტი საჭიროა ორივე ენაზე");
+      return;
+    }
+
+    setLoading(true);
+
+    const res = await fetch("/api/blog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, coverImage }),
+      body: JSON.stringify({ ...form, images }),
     });
 
-    setForm({ title: "", slug: "", content: "" });
-    setImageFile(null);
+    if (!res.ok) {
+      const err = await res.json();
+      alert(err.error || "შეცდომა პოსტის დამატებისას");
+      setLoading(false);
+      return;
+    }
+
+    setForm(emptyForm);
+    setImages([]);
+    setActiveLang("ka");
     await loadPosts();
     setLoading(false);
   }
@@ -83,51 +135,110 @@ export default function BlogPage() {
 
         <div className="blog-create-card">
           <h2 className="blog-create-title">ახალი პოსტის დამატება</h2>
+
+          <div className="blog-lang-tabs">
+            <button type="button" className={activeLang === "ka" ? "blog-lang-tab active" : "blog-lang-tab"} onClick={() => setActiveLang("ka")}>
+              ქართული
+              {(!form.title.ka || !form.content.ka) && <span className="blog-lang-dot" />}
+            </button>
+            <button type="button" className={activeLang === "en" ? "blog-lang-tab active" : "blog-lang-tab"} onClick={() => setActiveLang("en")}>
+              English
+              {(!form.title.en || !form.content.en) && <span className="blog-lang-dot" />}
+            </button>
+          </div>
+
           <form onSubmit={handleCreate} className="blog-form">
             <div className="blog-field">
-              <label className="blog-field-label">სათაური<span className="required">*</span></label>
+              <label className="blog-field-label">
+                სათაური {activeLang === "ka" ? "(ქართულად)" : "(ინგლისურად)"}<span className="required">*</span>
+              </label>
               <input
                 className="blog-input"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                value={form.title[activeLang]}
+                onChange={(e) => updateField("title", activeLang, e.target.value)}
                 required
               />
             </div>
 
+            {activeLang === "en" && (
+              <div className="blog-field">
+                <label className="blog-field-label">სლაგი<span className="required">*</span></label>
+                <input
+                  className="blog-input"
+                  value={form.slug}
+                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
+                  placeholder="my-post-title (ცარიელი დატოვეთ ავტომატური გენერაციისთვის)"
+                />
+                <p className="blog-slug-hint">URL-ის ნაწილი — თუ ცარიელი დარჩება, ინგლისური სათაურიდან გენერირდება</p>
+              </div>
+            )}
+
             <div className="blog-field">
-              <label className="blog-field-label">სლაგი<span className="required">*</span></label>
+              <label className="blog-field-label">
+                მოკლე აღწერა {activeLang === "ka" ? "(ქართულად)" : "(ინგლისურად)"}<span className="optional">(არასავალდებულო)</span>
+              </label>
               <input
                 className="blog-input"
-                value={form.slug}
-                onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                placeholder="my-post-title"
-                required
-              />
-              <p className="blog-slug-hint">URL-ის ნაწილი, ინგლისურად, დეფისებით — მაგ: my-post-title</p>
-            </div>
-
-            <div className="blog-field">
-              <label className="blog-field-label">შინაარსი<span className="required">*</span></label>
-              <textarea
-                className="blog-textarea"
-                value={form.content}
-                onChange={(e) => setForm({ ...form, content: e.target.value })}
-                required
+                value={form.excerpt[activeLang]}
+                onChange={(e) => updateField("excerpt", activeLang, e.target.value)}
               />
             </div>
 
             <div className="blog-field">
-              <label className="blog-field-label">ყდის სურათი<span className="optional">(არასავალდებულო)</span></label>
+              <label className="blog-field-label">
+                შინაარსი {activeLang === "ka" ? "(ქართულად)" : "(ინგლისურად)"}<span className="required">*</span>
+              </label>
+
+              {/* Two independent, permanently-mounted editors — one per
+                  language. Tabs only toggle CSS visibility, never unmount
+                  either editor, so ka/en content can't collide or fail to
+                  update. */}
+              <div className={activeLang === "ka" ? "rte-lang-pane" : "rte-lang-pane rte-lang-pane-hidden"}>
+                <RichTextEditor
+                  value={form.content.ka}
+                  onChange={(html) => updateField("content", "ka", html)}
+                  placeholder="დაწერეთ პოსტის ტექსტი..."
+                />
+              </div>
+              <div className={activeLang === "en" ? "rte-lang-pane" : "rte-lang-pane rte-lang-pane-hidden"}>
+                <RichTextEditor
+                  value={form.content.en}
+                  onChange={(html) => updateField("content", "en", html)}
+                  placeholder="Write the post content..."
+                />
+              </div>
+            </div>
+
+            <div className="blog-field">
+              <label className="blog-field-label">
+                სურათები<span className="optional">(არასავალდებულო — 1 სურათი ან რამდენიმე სლაიდერისთვის)</span>
+              </label>
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 className="blog-file-input"
-                onChange={(e) => setImageFile(e.target.files[0])}
+                onChange={handleImageSelect}
               />
+
+              {images.length > 0 && (
+                <div className="blog-image-gallery">
+                  {images.map((img, i) => (
+                    <div key={img.url + i} className="blog-image-item">
+                      <img src={img.url} alt="" />
+                      <div className="blog-image-item-actions">
+                        <button type="button" onClick={() => moveImage(i, -1)} disabled={i === 0} title="მარცხნივ">←</button>
+                        <button type="button" onClick={() => moveImage(i, 1)} disabled={i === images.length - 1} title="მარჯვნივ">→</button>
+                        <button type="button" onClick={() => removeImage(i)} title="წაშლა" className="danger">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <button type="submit" disabled={loading} className="blog-submit-btn">
-              {uploading ? "სურათი იტვირთება..." : loading ? "ემატება..." : "პოსტის დამატება"}
+            <button type="submit" disabled={loading || uploading} className="blog-submit-btn">
+              {uploading ? "სურათები იტვირთება..." : loading ? "ემატება..." : "პოსტის დამატება"}
             </button>
           </form>
         </div>
@@ -138,13 +249,13 @@ export default function BlogPage() {
           ) : (
             posts.map((post) => (
               <div key={post._id} className="blog-item">
-                {post.coverImage ? (
-                  <img src={post.coverImage} alt={post.title} className="blog-thumb" />
+                {post.images?.[0]?.url ? (
+                  <img src={post.images[0].url} alt="" className="blog-thumb" />
                 ) : (
                   <div className="blog-thumb-placeholder"><DocIcon /></div>
                 )}
                 <div className="blog-item-info">
-                  <h3 className="blog-item-title">{post.title}</h3>
+                  <h3 className="blog-item-title">{post.title?.ka} <span className="blog-item-title-en">/ {post.title?.en}</span></h3>
                   <p className="blog-item-meta">/{post.slug}</p>
                 </div>
                 <div className="blog-item-actions">

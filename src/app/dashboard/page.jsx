@@ -126,7 +126,9 @@ export default function DashboardPage() {
                     <div className="dash-item-thumb-placeholder"><DocIcon /></div>
                   )}
                   <div className="dash-item-info">
-                    <p className="dash-item-title">{post.title}</p>
+                    <p className="dash-item-title">
+                      {post.title?.ka || post.title?.en || "უსახელო პოსტი"}
+                    </p>
                     <p className="dash-item-meta">/{post.slug}</p>
                   </div>
                   <div className="dash-item-chevron"><ChevronIcon /></div>

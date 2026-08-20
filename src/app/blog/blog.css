@@ -103,6 +103,48 @@
   margin: 0 0 16px;
 }
 
+/* ---------- Language tabs ---------- */
+
+.blog-lang-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: #eceef1;
+  border-radius: 999px;
+  margin-bottom: 16px;
+}
+
+.blog-lang-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #656d76;
+  font-family: inherit;
+  font-feature-settings: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.blog-lang-tab.active {
+  background: #ffffff;
+  color: #1f2328;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.blog-lang-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #cf222e;
+}
+
 .blog-form {
   display: flex;
   flex-direction: column;
@@ -174,6 +216,166 @@
   font-size: 13.5px;
   color: #656d76;
   cursor: pointer;
+}
+
+/* ---------- Rich text editor ---------- */
+
+.rte-wrap {
+  border: 1px solid #d0d7de;
+  border-radius: 10px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.rte-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f6f8fa;
+}
+
+.rte-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #24292f;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.rte-btn:hover:not(:disabled) {
+  background: #eceef1;
+}
+
+.rte-btn.active {
+  background: #24292f;
+  color: #ffffff;
+}
+
+.rte-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.rte-sep {
+  width: 1px;
+  height: 20px;
+  background: #d0d7de;
+  margin: 0 4px;
+}
+
+.rte-wrap .ProseMirror {
+  min-height: 160px;
+  padding: 14px 16px;
+  outline: none;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #1f2328;
+}
+
+.rte-wrap .ProseMirror p {
+  margin: 0 0 0.85em;
+}
+
+.rte-wrap .ProseMirror h2 {
+  font-size: 19px;
+  font-weight: 700;
+  margin: 0.9em 0 0.4em;
+}
+
+.rte-wrap .ProseMirror h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0.8em 0 0.4em;
+}
+
+.rte-wrap .ProseMirror ul,
+.rte-wrap .ProseMirror ol {
+  padding-left: 22px;
+  margin: 0 0 0.85em;
+}
+
+.rte-wrap .ProseMirror li {
+  margin: 0.25em 0;
+}
+
+.rte-wrap .ProseMirror a {
+  color: #0969da;
+  text-decoration: underline;
+}
+
+.rte-wrap .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9aa4af;
+  pointer-events: none;
+  height: 0;
+}
+
+/* ---------- Image gallery ---------- */
+
+.blog-image-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.blog-image-item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  aspect-ratio: 1;
+  background: #eceef1;
+}
+
+.blog-image-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.blog-image-item-actions {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  background: linear-gradient(to top, rgba(0,0,0,0.55), transparent);
+}
+
+.blog-image-item-actions button {
+  flex: 1;
+  height: 22px;
+  border: none;
+  border-radius: 5px;
+  background: rgba(255,255,255,0.9);
+  color: #1f2328;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.blog-image-item-actions button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.blog-image-item-actions button.danger {
+  background: #cf222e;
+  color: #fff;
 }
 
 .blog-submit-btn {
@@ -270,6 +472,12 @@
   text-overflow: ellipsis;
 }
 
+.blog-item-title-en {
+  font-weight: 400;
+  color: #9aa4af;
+  font-size: 13px;
+}
+
 .blog-item-meta {
   font-size: 12.5px;
   color: #9aa4af;
@@ -324,4 +532,11 @@
   text-align: center;
   color: #9aa4af;
   font-size: 14px;
+}
+.rte-lang-pane {
+  display: block;
+}
+
+.rte-lang-pane-hidden {
+  display: none;
 }
