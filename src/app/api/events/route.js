@@ -4,7 +4,11 @@ import Event from "@/lib/models/Event";
 export async function GET() {
   await connectDB();
   const events = await Event.find().sort({ year: 1 });
-  return Response.json(events);
+  return Response.json(events, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 }
 
 export async function POST(request) {

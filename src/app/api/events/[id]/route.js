@@ -6,7 +6,11 @@ export async function GET(request, { params }) {
   await connectDB();
   const event = await Event.findById(id);
   if (!event) return Response.json({ error: "ვერ მოიძებნა" }, { status: 404 });
-  return Response.json(event);
+  return Response.json(event, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 }
 
 export async function PUT(request, { params }) {

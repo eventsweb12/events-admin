@@ -8,7 +8,11 @@ export async function GET(request, { params }) {
   const post = await BlogPost.findById(id);
   if (!post) return Response.json({ error: "ვერ მოიძებნა" }, { status: 404 });
 
-  return Response.json(post);
+  return Response.json(post, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 }
 
 export async function PUT(request, { params }) {

@@ -24,7 +24,11 @@ export async function GET(request) {
   if (published === "false") filter.published = false;
 
   const posts = await BlogPost.find(filter).sort({ createdAt: -1 });
-  return Response.json(posts);
+  return Response.json(posts, {
+    headers: {
+      "Access-Control-Allow-Origin": "*",
+    },
+  });
 }
 
 export async function POST(request) {
