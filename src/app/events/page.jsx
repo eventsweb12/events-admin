@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import "./events.css";
+import { uploadImage } from "../../app/api/upload/route";
 
 const emptyForm = {
   title: { geo: "", eng: "" },
@@ -55,13 +56,13 @@ export default function EventsPage() {
     setForm({ ...form, [field]: { ...form[field], [lang]: value } });
   }
 
+  // Uploads straight to Cloudinary from the browser (compressing first
+  // if needed) instead of going through our own /api/upload route —
+  // Vercel's serverless functions hard-cap request bodies at 4.5MB,
+  // which was causing 413s on larger photos.
   async function uploadFile(file) {
-    const uploadData = new FormData();
-    uploadData.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: uploadData });
-    const result = await res.json();
-    if (!res.ok) throw new Error("upload failed");
-    return result.url;
+    const result = await uploadImage(file);
+    return result.secure_url;
   }
 
   async function handleCreate(e) {

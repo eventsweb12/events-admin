@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import RichTextEditor from "../RichTextEditor";
 import "./blogid.css";
+import { uploadImage } from "../../api/upload/route";
 
 export default function EditBlogPage() {
   const router = useRouter();
@@ -36,6 +37,10 @@ export default function EditBlogPage() {
     }));
   }
 
+  // Uploads straight to Cloudinary from the browser (compressing first
+  // if needed) instead of going through our own /api/upload route —
+  // Vercel's serverless functions hard-cap request bodies at 4.5MB,
+  // which was causing 413s on larger photos.
   async function handleImageSelect(e) {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -44,12 +49,12 @@ export default function EditBlogPage() {
     const uploaded = [];
 
     for (const file of files) {
-      const uploadData = new FormData();
-      uploadData.append("file", file);
-      const res = await fetch("/api/upload", { method: "POST", body: uploadData });
-      const result = await res.json();
-      if (res.ok) {
-        uploaded.push({ url: result.url, alt: { ka: "", en: "" } });
+      try {
+        const result = await uploadImage(file);
+        uploaded.push({ url: result.secure_url, alt: { ka: "", en: "" } });
+      } catch (err) {
+        console.error("Image upload failed:", err);
+        alert("სურათის ატვირთვა ვერ მოხერხდა");
       }
     }
 

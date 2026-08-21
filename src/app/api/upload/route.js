@@ -1,97 +1,99 @@
-import sharp from "sharp";
-import cloudinary from "@/lib/cloudinary";
+// lib/uploadImage.js
+//
+// Uploads an image FILE straight from the browser to Cloudinary,
+// bypassing our own Vercel API route entirely (Vercel serverless
+// functions hard-cap request bodies at 4.5MB, which was causing 413s
+// on anything over that — Cloudinary itself has no such limit for
+// direct browser uploads).
+//
+// If the file is over Cloudinary's own preset limit (10MB here), it's
+// compressed client-side first, quality-first, exactly like the old
+// sharp-based approach: try near-lossless quality, only step down as
+// far as actually needed, only resize dimensions as an absolute last
+// resort.
 
-// Match this to your Cloudinary upload preset's limit.
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+const CLOUD_NAME = 'bhczkack'
+const UPLOAD_PRESET = 'admin_uploads_unsigned'
+const MAX_BYTES = 10 * 1024 * 1024 // 10 MB — match your preset's limit
 
-export async function POST(request) {
-  const formData = await request.formData();
-  const file = formData.get("file");
+/**
+ * Compresses an image File to WebP if it's over maxBytes, stepping
+ * quality down only as far as needed. Returns the original File
+ * untouched if it already fits — zero quality loss unless necessary.
+ */
+async function compressToFit(file, maxBytes = MAX_BYTES) {
+  if (file.size <= maxBytes) return file
 
-  if (!file) {
-    return Response.json({ error: "ფაილი არ მოიძებნა" }, { status: 400 });
-  }
+  const bitmap = await createImageBitmap(file)
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  const ctx = canvas.getContext('2d')
+  ctx.drawImage(bitmap, 0, 0)
 
-  const bytes = await file.arrayBuffer();
-  let buffer = Buffer.from(bytes);
-
-  // Only touch the file if it's actually over the limit — a file that
-  // already fits gets uploaded untouched, so there's zero quality loss
-  // unless it's genuinely necessary.
-  if (buffer.length > MAX_BYTES) {
-    try {
-      buffer = await compressToFit(buffer, MAX_BYTES);
-    } catch (err) {
-      console.error("Compression failed:", err);
-      return Response.json(
-        { error: "სურათის დამუშავება ვერ მოხერხდა" },
-        { status: 500 }
-      );
-    }
-  }
-
-  const result = await new Promise((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream(
-      { folder: "admin-uploads" },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
+  const toBlob = (width, height, quality) =>
+    new Promise((resolve) => {
+      if (width !== canvas.width || height !== canvas.height) {
+        const c = document.createElement('canvas')
+        c.width = width
+        c.height = height
+        c.getContext('2d').drawImage(bitmap, 0, 0, width, height)
+        c.toBlob(resolve, 'image/webp', quality)
+      } else {
+        canvas.toBlob(resolve, 'image/webp', quality)
       }
-    );
-    stream.end(buffer);
-  });
+    })
 
-  return Response.json({ url: result.secure_url });
+  let quality = 0.92
+  let blob = await toBlob(canvas.width, canvas.height, quality)
+
+  while (blob.size > maxBytes && quality > 0.4) {
+    quality -= 0.06
+    blob = await toBlob(canvas.width, canvas.height, quality)
+  }
+
+  let width = canvas.width
+  while (blob.size > maxBytes && width > 1000) {
+    width = Math.round(width * 0.85)
+    const height = Math.round((canvas.height / canvas.width) * width)
+    blob = await toBlob(width, height, 0.85)
+  }
+
+  const baseName = file.name.replace(/\.[^.]+$/, '')
+  return new File([blob], `${baseName}.webp`, { type: 'image/webp' })
 }
 
 /**
- * Re-encodes an oversized image to WebP, only reducing quality/size as
- * far as actually needed to fit under maxBytes.
- *
- * Strategy (best quality first):
- *   1. Re-encode at quality 92 (visually lossless for almost any photo).
- *   2. Step quality down in small increments only if still too large.
- *   3. Only as a last resort (huge source dimensions, e.g. 6000px+
- *      photos) start scaling dimensions down, keeping quality high.
- *
- * WebP is used because at equal visual quality it's routinely 25–35%
- * smaller than JPEG, and — unlike JPEG — it also supports transparency,
- * so PNG uploads with alpha channels keep working correctly.
+ * Compresses (if needed) and uploads an image File directly to
+ * Cloudinary. Returns the Cloudinary response (use .secure_url for
+ * the image URL to store in your event/blog document).
  */
-async function compressToFit(buffer, maxBytes) {
-  const image = sharp(buffer).rotate(); // respect EXIF orientation
-  const metadata = await image.metadata();
+export async function uploadImage(file, { onProgress } = {}) {
+  const toUpload = await compressToFit(file)
 
-  let quality = 92;
-  let output = await sharp(buffer)
-    .rotate()
-    .webp({ quality, effort: 6 })
-    .toBuffer();
+  const formData = new FormData()
+  formData.append('file', toUpload)
+  formData.append('upload_preset', UPLOAD_PRESET)
 
-  while (output.length > maxBytes && quality > 40) {
-    quality -= 6;
-    output = await sharp(buffer)
-      .rotate()
-      .webp({ quality, effort: 6 })
-      .toBuffer();
-  }
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`)
 
-  if (output.length <= maxBytes) return output;
+    xhr.upload.onprogress = (e) => {
+      if (onProgress && e.lengthComputable) {
+        onProgress(Math.round((e.loaded / e.total) * 100))
+      }
+    }
 
-  // Quality reduction alone wasn't enough — the source dimensions are
-  // just very large. Scale down gradually, keeping quality high, until
-  // it fits.
-  let width = metadata.width || 4000;
-  quality = 85;
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(JSON.parse(xhr.responseText))
+      } else {
+        reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`))
+      }
+    }
 
-  while (output.length > maxBytes && width > 1000) {
-    width = Math.round(width * 0.85);
-    output = await sharp(buffer)
-      .rotate()
-      .resize({ width })
-      .webp({ quality, effort: 6 })
-      .toBuffer();
-  }
-
-  return output;
+    xhr.onerror = () => reject(new Error('Network error during upload'))
+    xhr.send(formData)
+  })
 }

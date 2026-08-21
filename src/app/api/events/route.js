@@ -2,13 +2,16 @@ import connectDB from "@/lib/mongodb";
 import Event from "@/lib/models/Event";
 
 export async function GET() {
-  await connectDB();
-  const events = await Event.find().sort({ year: 1 });
-  return Response.json(events, {
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
+  try {
+    await connectDB();
+    const events = await Event.find().sort({ year: 1 });
+    return Response.json(events, {
+      headers: { "Access-Control-Allow-Origin": "*" },
+    });
+  } catch (err) {
+    console.error("GET /api/events failed:", err);
+    return Response.json({ error: "Server error" }, { status: 500 });
+  }
 }
 
 export async function POST(request) {
