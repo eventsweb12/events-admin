@@ -13,8 +13,6 @@ const BlogPostSchema = new mongoose.Schema(
       en: { type: String, required: true },
     },
 
-    slug: { type: String, required: true, unique: true },
-
     // ბლოგის პოსტის ტექსტი (HTML ფორმატში — მოდის Rich Text Editor-იდან)
     // შეიცავს: აბზაცებს <p>, bullet points <ul><li>, სათაურებს <h2>/<h3>, ლინკებს <a href="">
     content: {

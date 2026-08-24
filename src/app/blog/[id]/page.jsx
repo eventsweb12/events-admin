@@ -22,7 +22,6 @@ export default function EditBlogPage() {
       .then((data) => {
         setForm({
           title: data.title || { ka: "", en: "" },
-          slug: data.slug || "",
           excerpt: data.excerpt || { ka: "", en: "" },
           content: data.content || { ka: "", en: "" },
         });
@@ -158,18 +157,6 @@ export default function EditBlogPage() {
                 required
               />
             </div>
-
-            {activeLang === "en" && (
-              <div className="blid-field">
-                <label className="blid-field-label">სლაგი<span className="required">*</span></label>
-                <input
-                  className="blid-input"
-                  value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  required
-                />
-              </div>
-            )}
 
             <div className="blid-field">
               <label className="blid-field-label">

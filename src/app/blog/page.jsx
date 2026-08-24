@@ -8,7 +8,6 @@ import { uploadImage } from "../api/upload/route";
 
 const emptyForm = {
   title: { ka: "", en: "" },
-  slug: "",
   excerpt: { ka: "", en: "" },
   content: { ka: "", en: "" },
 };
@@ -165,19 +164,6 @@ export default function BlogPage() {
               />
             </div>
 
-            {activeLang === "en" && (
-              <div className="blog-field">
-                <label className="blog-field-label">სლაგი<span className="required">*</span></label>
-                <input
-                  className="blog-input"
-                  value={form.slug}
-                  onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  placeholder="my-post-title (ცარიელი დატოვეთ ავტომატური გენერაციისთვის)"
-                />
-                <p className="blog-slug-hint">URL-ის ნაწილი — თუ ცარიელი დარჩება, ინგლისური სათაურიდან გენერირდება</p>
-              </div>
-            )}
-
             <div className="blog-field">
               <label className="blog-field-label">
                 მოკლე აღწერა {activeLang === "ka" ? "(ქართულად)" : "(ინგლისურად)"}<span className="optional">(არასავალდებულო)</span>
@@ -261,7 +247,6 @@ export default function BlogPage() {
                 )}
                 <div className="blog-item-info">
                   <h3 className="blog-item-title">{post.title?.ka} <span className="blog-item-title-en">/ {post.title?.en}</span></h3>
-                  <p className="blog-item-meta">/{post.slug}</p>
                 </div>
                 <div className="blog-item-actions">
                   <Link href={`/blog/${post._id}`} className="blog-edit-btn">რედაქტირება</Link>

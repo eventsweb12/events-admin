@@ -1,18 +1,6 @@
 import connectDB from "@/lib/mongodb";
 import BlogPost from "@/lib/models/BlogPost";
 
-// დამხმარე ფუნქცია — ქართული/ინგლისური სათაურიდან slug-ის გენერაცია
-function generateSlug(title) {
-  return title
-    .toString()
-    .toLowerCase()
-    .trim()
-    // ტრანსლიტერაცია ან უბრალოდ space -> dash, სხვა სიმბოლოების მოცილება
-    .replace(/\s+/g, "-")
-    .replace(/[^\p{L}\p{N}-]/gu, "")
-    .replace(/-+/g, "-");
-}
-
 export async function GET(request) {
   await connectDB();
 
@@ -52,21 +40,9 @@ export async function POST(request) {
     );
   }
 
-  // slug ან მოცემულია, ან გენერირდება ინგლისური სათაურიდან
-  let slug = body.slug ? generateSlug(body.slug) : generateSlug(title.en);
-
-  // უნიკალურობის შემოწმება — თუ დაკავებულია, ბოლოში ემატება რიცხვი
-  let uniqueSlug = slug;
-  let counter = 1;
-  while (await BlogPost.findOne({ slug: uniqueSlug })) {
-    uniqueSlug = `${slug}-${counter}`;
-    counter++;
-  }
-
   try {
     const post = await BlogPost.create({
       title,
-      slug: uniqueSlug,
       content,
       images: images || [],
       excerpt: excerpt || {},
