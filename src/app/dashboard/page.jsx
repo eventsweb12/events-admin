@@ -118,22 +118,25 @@ export default function DashboardPage() {
             ) : posts.length === 0 ? (
               <div className="dash-empty">ჯერ არცერთი პოსტი არ დამატებულა</div>
             ) : (
-              posts.slice(0, 5).map((post) => (
-                <Link href={`/blog/${post._id}`} key={post._id} className="dash-list-item">
-                  {post.coverImage ? (
-                    <img src={post.coverImage} alt="" className="dash-item-thumb" />
-                  ) : (
-                    <div className="dash-item-thumb-placeholder"><DocIcon /></div>
-                  )}
-                  <div className="dash-item-info">
-                    <p className="dash-item-title">
-                      {post.title?.ka || post.title?.en || "უსახელო პოსტი"}
-                    </p>
-                    <p className="dash-item-meta">/{post.slug}</p>
-                  </div>
-                  <div className="dash-item-chevron"><ChevronIcon /></div>
-                </Link>
-              ))
+              posts.slice(0, 5).map((post) => {
+                const thumbUrl = post.images?.[0]?.url;
+                return (
+                  <Link href={`/blog/${post._id}`} key={post._id} className="dash-list-item">
+                    {thumbUrl ? (
+                      <img src={thumbUrl} alt="" className="dash-item-thumb" />
+                    ) : (
+                      <div className="dash-item-thumb-placeholder"><DocIcon /></div>
+                    )}
+                    <div className="dash-item-info">
+                      <p className="dash-item-title">
+                        {post.title?.ka || post.title?.en || "უსახელო პოსტი"}
+                      </p>
+                      <p className="dash-item-meta">/{post.slug}</p>
+                    </div>
+                    <div className="dash-item-chevron"><ChevronIcon /></div>
+                  </Link>
+                );
+              })
             )}
           </div>
         </div>
