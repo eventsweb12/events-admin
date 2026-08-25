@@ -2,7 +2,7 @@ import "./globals.css";
 
 export const metadata = {
   title: "Admin Panel",
-  description: "სისტემის ადმინისტრირების პანელი",
+  description: "ადმინ პანელი",
 };
 
 export default function RootLayout({ children }) {
