@@ -11,7 +11,6 @@ export default function EditEventPage() {
   const { id } = useParams();
   const [form, setForm] = useState(null);
   const [mainImageFile, setMainImageFile] = useState(null);
-  const [videoFile, setVideoFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [galleryUploading, setGalleryUploading] = useState(false);
@@ -31,8 +30,15 @@ export default function EditEventPage() {
   // Vercel's serverless functions hard-cap request bodies at 4.5MB,
   // which was causing 413s on larger photos.
   async function uploadFile(file) {
-    const result = await uploadImage(file);
-    return result.secure_url;
+    console.log("uploading:", file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
+    try {
+      const result = await uploadImage(file);
+      console.log("upload ok:", file.name, "->", result?.secure_url);
+      return result.secure_url;
+    } catch (err) {
+      console.error("uploadImage failed for", file.name, err);
+      throw err;
+    }
   }
 
   function cleanBilingual(obj) {
@@ -62,7 +68,6 @@ export default function EditEventPage() {
     setLoading(true);
 
     let mainImage = form.mainImage;
-    let video = form.video;
 
     try {
       if (mainImageFile) {
@@ -75,11 +80,6 @@ export default function EditEventPage() {
         setUploading(false);
         setLoading(false);
         return;
-      }
-
-      if (videoFile) {
-        setUploading(true);
-        video = await uploadFile(videoFile);
       }
       setUploading(false);
 
@@ -96,9 +96,8 @@ export default function EditEventPage() {
         carouselImages,
       };
 
-      if (video) payload.video = video;
+      if (form.youtubeUrl) payload.youtubeUrl = form.youtubeUrl;
 
-      const title = cleanBilingual(form.title);
       const client = cleanBilingual(form.client);
       const venue = cleanBilingual(form.venue);
       const format = cleanBilingual(form.format);
@@ -106,7 +105,6 @@ export default function EditEventPage() {
       const role = cleanBilingual(form.role);
       const about = cleanBilingual(form.about);
 
-      if (title) payload.title = title;
       if (client) payload.client = client;
       if (venue) payload.venue = venue;
       if (format) payload.format = format;
@@ -194,25 +192,6 @@ export default function EditEventPage() {
 
         <div className="evid-card">
           <form onSubmit={handleUpdate} className="evid-form">
-            {/* Title */}
-            <div className="evid-field">
-              <label className="evid-field-label">სათაური<span className="optional">(არასავალდებულო)</span></label>
-              <div className="evid-lang-row">
-                <input
-                  className="evid-input"
-                  placeholder="ქართულად"
-                  value={form.title?.geo || ""}
-                  onChange={(e) => updateBilingual("title", "geo", e.target.value)}
-                />
-                <input
-                  className="evid-input"
-                  placeholder="English"
-                  value={form.title?.eng || ""}
-                  onChange={(e) => updateBilingual("title", "eng", e.target.value)}
-                />
-              </div>
-            </div>
-
             {/* Client */}
             <div className="evid-field">
               <label className="evid-field-label">დამკვეთი<span className="optional">(არასავალდებულო)</span></label>
@@ -420,21 +399,16 @@ export default function EditEventPage() {
               {galleryUploading && <p className="evid-hint">ფოტოები იტვირთება...</p>}
             </div>
 
-            {/* Video */}
+            {/* YouTube link */}
             <div className="evid-field">
-              <label className="evid-field-label">ვიდეო<span className="optional">(არასავალდებულო)</span></label>
-              <div className="evid-preview-wrap">
-                {form.video && (
-                  <video src={form.video} className="evid-preview" controls muted />
-                )}
-                <input
-                  type="file"
-                  accept="video/*"
-                  className="evid-file-input"
-                  onChange={(e) => setVideoFile(e.target.files[0] || null)}
-                />
-              </div>
-              {videoFile && <p className="evid-hint">{videoFile.name}</p>}
+              <label className="evid-field-label">YouTube ბმული<span className="optional">(არასავალდებულო)</span></label>
+              <input
+                type="url"
+                className="evid-input"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={form.youtubeUrl || ""}
+                onChange={(e) => setForm({ ...form, youtubeUrl: e.target.value })}
+              />
             </div>
 
             <div className="evid-actions">

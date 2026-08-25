@@ -6,7 +6,6 @@ import "./events.css";
 import { uploadImage } from "../../app/api/upload/route";
 
 const emptyForm = {
-  title: { geo: "", eng: "" },
   client: { geo: "", eng: "" },
   eventName: { geo: "", eng: "" },
   venue: { geo: "", eng: "" },
@@ -15,6 +14,7 @@ const emptyForm = {
   year: "",
   role: { geo: "", eng: "" },
   about: { geo: "", eng: "" },
+  youtubeUrl: "",
 };
 
 function slugify(text) {
@@ -41,7 +41,6 @@ export default function EventsPage() {
   const [galleryFiles, setGalleryFiles] = useState([]);
   const [galleryPreviews, setGalleryPreviews] = useState([]);
   const [carouselSelected, setCarouselSelected] = useState(new Set());
-  const [videoFile, setVideoFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -89,8 +88,15 @@ export default function EventsPage() {
   // Vercel's serverless functions hard-cap request bodies at 4.5MB,
   // which was causing 413s on larger photos.
   async function uploadFile(file) {
-    const result = await uploadImage(file);
-    return result.secure_url;
+    console.log("uploading:", file.name, file.type, `${(file.size / 1024).toFixed(0)}KB`);
+    try {
+      const result = await uploadImage(file);
+      console.log("upload ok:", file.name, "->", result?.secure_url);
+      return result.secure_url;
+    } catch (err) {
+      console.error("uploadImage failed for", file.name, err);
+      throw err;
+    }
   }
 
   async function handleCreate(e) {
@@ -120,10 +126,6 @@ export default function EventsPage() {
       // since Promise.all preserves it) — map those back to the uploaded urls
       const carouselImages = gallery.filter((_, i) => carouselSelected.has(i));
 
-      let video;
-      if (videoFile) {
-        video = await uploadFile(videoFile);
-      }
       setUploading(false);
 
       const slug = slugify(form.eventName.eng || form.eventName.geo);
@@ -136,10 +138,9 @@ export default function EventsPage() {
       };
 
       if (carouselImages.length > 0) payload.carouselImages = carouselImages;
-      if (video) payload.video = video;
+      if (form.youtubeUrl) payload.youtubeUrl = form.youtubeUrl;
 
       // only include optional fields if actually filled in
-      const title = cleanBilingual(form.title);
       const client = cleanBilingual(form.client);
       const venue = cleanBilingual(form.venue);
       const format = cleanBilingual(form.format);
@@ -147,7 +148,6 @@ export default function EventsPage() {
       const role = cleanBilingual(form.role);
       const about = cleanBilingual(form.about);
 
-      if (title) payload.title = title;
       if (client) payload.client = client;
       if (venue) payload.venue = venue;
       if (format) payload.format = format;
@@ -173,10 +173,10 @@ export default function EventsPage() {
       setImageFile(null);
       setGalleryFiles([]);
       setCarouselSelected(new Set());
-      setVideoFile(null);
       await loadEvents();
     } catch (err) {
-      alert("ატვირთვა ვერ მოხერხდა");
+      console.error("handleCreate failed:", err);
+      alert(`ატვირთვა ვერ მოხერხდა: ${err?.message || err}`);
     }
 
     setLoading(false);
@@ -211,25 +211,6 @@ export default function EventsPage() {
         <div className="ev-create-card">
           <h2 className="ev-create-title">ახალი ივენთის დამატება</h2>
           <form onSubmit={handleCreate} className="ev-form">
-            {/* Title (optional) */}
-            <div className="ev-field">
-              <label className="ev-field-label">სათაური<span className="optional">(არასავალდებულო)</span></label>
-              <div className="ev-lang-row">
-                <input
-                  className="ev-input"
-                  placeholder="ქართულად"
-                  value={form.title.geo}
-                  onChange={(e) => updateBilingual("title", "geo", e.target.value)}
-                />
-                <input
-                  className="ev-input"
-                  placeholder="English"
-                  value={form.title.eng}
-                  onChange={(e) => updateBilingual("title", "eng", e.target.value)}
-                />
-              </div>
-            </div>
-
             {/* Client (optional) */}
             <div className="ev-field">
               <label className="ev-field-label">დამკვეთი<span className="optional">(არასავალდებულო)</span></label>
@@ -425,16 +406,16 @@ export default function EventsPage() {
               )}
             </div>
 
-            {/* Video (optional) */}
+            {/* YouTube link (optional) */}
             <div className="ev-field">
-              <label className="ev-field-label">ვიდეო<span className="optional">(არასავალდებულო)</span></label>
+              <label className="ev-field-label">YouTube ბმული<span className="optional">(არასავალდებულო)</span></label>
               <input
-                type="file"
-                accept="video/*"
-                className="ev-file-input"
-                onChange={(e) => setVideoFile(e.target.files[0] || null)}
+                type="url"
+                className="ev-input"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={form.youtubeUrl}
+                onChange={(e) => setForm({ ...form, youtubeUrl: e.target.value })}
               />
-              {videoFile && <p className="ev-hint">{videoFile.name}</p>}
             </div>
 
             <button type="submit" disabled={loading} className="ev-submit-btn">

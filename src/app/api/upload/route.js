@@ -1,16 +1,17 @@
 // lib/uploadImage.js
 //
-// Uploads an image FILE straight from the browser to Cloudinary,
+// Uploads an IMAGE file straight from the browser to Cloudinary,
 // bypassing our own Vercel API route entirely (Vercel serverless
-// functions hard-cap request bodies at 4.5MB, which was causing 413s
-// on anything over that — Cloudinary itself has no such limit for
-// direct browser uploads).
+// functions cap request bodies at 4.5MB, causing 413s on anything
+// bigger — Cloudinary has no such limit for direct browser uploads).
 //
-// If the file is over Cloudinary's own preset limit (10MB here), it's
-// compressed client-side first, quality-first, exactly like the old
-// sharp-based approach: try near-lossless quality, only step down as
-// far as actually needed, only resize dimensions as an absolute last
-// resort.
+// If the image is over Cloudinary's preset limit (10MB here), it's
+// compressed client-side first, quality-first: try near-lossless
+// quality, only step down as far as actually needed, only resize
+// dimensions as an absolute last resort.
+//
+// Video is no longer handled here — events store a `youtubeUrl`
+// link instead of an uploaded video file.
 
 const CLOUD_NAME = 'bhczkack'
 const UPLOAD_PRESET = 'admin_uploads_unsigned'
@@ -66,9 +67,13 @@ async function compressToFit(file, maxBytes = MAX_BYTES) {
 /**
  * Compresses (if needed) and uploads an image File directly to
  * Cloudinary. Returns the Cloudinary response (use .secure_url for
- * the image URL to store in your event/blog document).
+ * the URL to store in your event/blog document).
  */
 export async function uploadImage(file, { onProgress } = {}) {
+  if (!file.type.startsWith('image/')) {
+    console.warn('uploadImage: expected an image file, got:', file.type)
+  }
+
   const toUpload = await compressToFit(file)
 
   const formData = new FormData()
@@ -77,7 +82,7 @@ export async function uploadImage(file, { onProgress } = {}) {
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`)
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`)
 
     xhr.upload.onprogress = (e) => {
       if (onProgress && e.lengthComputable) {
@@ -87,13 +92,19 @@ export async function uploadImage(file, { onProgress } = {}) {
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(JSON.parse(xhr.responseText))
+        const json = JSON.parse(xhr.responseText)
+        console.log('uploadImage success:', file.name, '->', json.secure_url)
+        resolve(json)
       } else {
+        console.error('uploadImage failed:', file.name, xhr.status, xhr.responseText)
         reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`))
       }
     }
 
-    xhr.onerror = () => reject(new Error('Network error during upload'))
+    xhr.onerror = () => {
+      console.error('uploadImage network error:', file.name)
+      reject(new Error('Network error during upload'))
+    }
     xhr.send(formData)
   })
 }

@@ -10,10 +10,9 @@ const BilingualStringSchema = new mongoose.Schema(
 
 const EventSchema = new mongoose.Schema(
   {
-    title: { type: BilingualStringSchema },
     client: { type: BilingualStringSchema },
 
-    eventName: { type: BilingualStringSchema, required: true }, // only required text field
+    eventName: { type: BilingualStringSchema, required: true }, // e.g. "Apivita — ბრენდის პრეზენტაცია"
     venue: { type: BilingualStringSchema },
     format: { type: BilingualStringSchema },
     audience: { type: BilingualStringSchema },
@@ -28,7 +27,7 @@ const EventSchema = new mongoose.Schema(
     // subset of `gallery` (or standalone) urls picked to show in the carousel
     carouselImages: [{ type: String }],
 
-    video: { type: String }, // uploaded video url
+    youtubeUrl: { type: String }, // link to YouTube video, replaces old file upload
 
     slug: { type: String, unique: true, sparse: true },
   },
