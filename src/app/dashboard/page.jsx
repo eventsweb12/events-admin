@@ -32,8 +32,8 @@ export default function DashboardPage() {
       <div className="dash-topbar">
         <div className="dash-topbar-inner">
           <div className="dash-brand">
-            <div className="dash-brand-mark">E</div>
-            <span className="dash-brand-text">Events Admin</span>
+            <div className="dash-brand-mark">M</div>
+            <span className="dash-brand-text">Motion Concept Admin</span>
           </div>
           <button onClick={handleLogout} className="dash-logout-btn">
             გასვლა
