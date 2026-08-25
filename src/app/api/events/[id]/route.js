@@ -26,6 +26,23 @@ export async function PUT(request, { params }) {
     const { id } = await params;
     const body = await request.json();
 
+    // carouselImages must be a subset of gallery. If gallery isn't part of
+    // this update, fall back to the event's existing gallery for the check.
+    if (Array.isArray(body.carouselImages)) {
+      const gallery =
+        body.gallery ?? (await Event.findById(id).select("gallery")).gallery;
+
+      const invalid = body.carouselImages.filter(
+        (url) => !gallery.includes(url)
+      );
+      if (invalid.length) {
+        return Response.json(
+          { error: "carouselImages must be selected from gallery" },
+          { status: 400 }
+        );
+      }
+    }
+
     const event = await Event.findByIdAndUpdate(id, body, {
       new: true,
       runValidators: true,

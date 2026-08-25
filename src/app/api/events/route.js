@@ -18,6 +18,19 @@ export async function POST(request) {
   await connectDB();
   const body = await request.json();
 
+  // carouselImages must be a subset of gallery (if both were provided)
+  if (Array.isArray(body.carouselImages) && Array.isArray(body.gallery)) {
+    const invalid = body.carouselImages.filter(
+      (url) => !body.gallery.includes(url)
+    );
+    if (invalid.length) {
+      return Response.json(
+        { error: "carouselImages must be selected from gallery" },
+        { status: 400 }
+      );
+    }
+  }
+
   try {
     const event = await Event.create(body);
     return Response.json(event, { status: 201 });

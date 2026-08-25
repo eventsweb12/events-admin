@@ -11,6 +11,7 @@ export default function EditEventPage() {
   const { id } = useParams();
   const [form, setForm] = useState(null);
   const [mainImageFile, setMainImageFile] = useState(null);
+  const [videoFile, setVideoFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [galleryUploading, setGalleryUploading] = useState(false);
@@ -18,7 +19,7 @@ export default function EditEventPage() {
   useEffect(() => {
     fetch(`/api/events/${id}`)
       .then((res) => res.json())
-      .then((data) => setForm(data));
+      .then((data) => setForm({ ...data, carouselImages: data.carouselImages || [] }));
   }, [id]);
 
   function updateBilingual(field, lang, value) {
@@ -40,6 +41,16 @@ export default function EditEventPage() {
     return obj;
   }
 
+  function toggleCarouselPick(url) {
+    setForm((prev) => {
+      const current = prev.carouselImages || [];
+      const next = current.includes(url)
+        ? current.filter((u) => u !== url)
+        : [...current, url];
+      return { ...prev, carouselImages: next };
+    });
+  }
+
   async function handleUpdate(e) {
     e.preventDefault();
 
@@ -51,25 +62,41 @@ export default function EditEventPage() {
     setLoading(true);
 
     let mainImage = form.mainImage;
+    let video = form.video;
 
     try {
       if (mainImageFile) {
         setUploading(true);
         mainImage = await uploadFile(mainImageFile);
-        setUploading(false);
       }
 
       if (!mainImage) {
         alert("მთავარი სურათი სავალდებულოა");
+        setUploading(false);
         setLoading(false);
         return;
       }
 
+      if (videoFile) {
+        setUploading(true);
+        video = await uploadFile(videoFile);
+      }
+      setUploading(false);
+
+      const gallery = form.gallery || [];
+      // keep only picks that still exist in the current gallery
+      const carouselImages = (form.carouselImages || []).filter((url) =>
+        gallery.includes(url)
+      );
+
       const payload = {
         eventName: form.eventName,
         mainImage,
-        gallery: form.gallery || [],
+        gallery,
+        carouselImages,
       };
+
+      if (video) payload.video = video;
 
       const title = cleanBilingual(form.title);
       const client = cleanBilingual(form.client);
@@ -104,7 +131,7 @@ export default function EditEventPage() {
 
       router.push("/events");
     } catch (err) {
-      alert("სურათის ატვირთვა ვერ მოხერხდა");
+      alert("ატვირთვა ვერ მოხერხდა");
       setUploading(false);
       setLoading(false);
     }
@@ -126,9 +153,14 @@ export default function EditEventPage() {
   }
 
   function handleGalleryRemove(index) {
+    const url = form.gallery[index];
     const next = [...form.gallery];
     next.splice(index, 1);
-    setForm({ ...form, gallery: next });
+    setForm({
+      ...form,
+      gallery: next,
+      carouselImages: (form.carouselImages || []).filter((u) => u !== url),
+    });
   }
 
   async function handleDelete() {
@@ -340,26 +372,42 @@ export default function EditEventPage() {
               </div>
             </div>
 
-            {/* Gallery */}
+            {/* Gallery + carousel picker */}
             <div className="evid-field">
               <label className="evid-field-label">დამატებითი ფოტოები<span className="optional">(არასავალდებულო)</span></label>
 
               {form.gallery && form.gallery.length > 0 && (
-                <div className="evid-gallery-grid">
-                  {form.gallery.map((url, index) => (
-                    <div key={index} className="evid-gallery-item">
-                      <img src={url} alt="" className="evid-gallery-thumb" />
-                      <button
-                        type="button"
-                        className="evid-gallery-remove"
-                        onClick={() => handleGalleryRemove(index)}
-                        aria-label="წაშლა"
-                      >
-                        <TrashIcon />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <p className="evid-hint">დააჭირეთ ფოტოს, რომ ჩართოთ/გამორთოთ კარუსელში</p>
+                  <div className="evid-gallery-grid">
+                    {form.gallery.map((url, index) => {
+                      const picked = (form.carouselImages || []).includes(url);
+                      return (
+                        <div key={index} className={`evid-gallery-item${picked ? " is-picked" : ""}`}>
+                          <button
+                            type="button"
+                            className="evid-gallery-pick"
+                            onClick={() => toggleCarouselPick(url)}
+                          >
+                            <img src={url} alt="" className="evid-gallery-thumb" />
+                            <span className="evid-gallery-check">{picked ? "✓" : ""}</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="evid-gallery-remove"
+                            onClick={() => handleGalleryRemove(index)}
+                            aria-label="წაშლა"
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {(form.carouselImages || []).length > 0 && (
+                    <p className="evid-hint">{form.carouselImages.length} ფოტო კარუსელისთვის</p>
+                  )}
+                </>
               )}
 
               <input
@@ -372,9 +420,26 @@ export default function EditEventPage() {
               {galleryUploading && <p className="evid-hint">ფოტოები იტვირთება...</p>}
             </div>
 
+            {/* Video */}
+            <div className="evid-field">
+              <label className="evid-field-label">ვიდეო<span className="optional">(არასავალდებულო)</span></label>
+              <div className="evid-preview-wrap">
+                {form.video && (
+                  <video src={form.video} className="evid-preview" controls muted />
+                )}
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="evid-file-input"
+                  onChange={(e) => setVideoFile(e.target.files[0] || null)}
+                />
+              </div>
+              {videoFile && <p className="evid-hint">{videoFile.name}</p>}
+            </div>
+
             <div className="evid-actions">
               <button type="submit" disabled={loading} className="evid-save-btn">
-                {uploading ? "სურათი იტვირთება..." : loading ? "ინახება..." : "შენახვა"}
+                {uploading ? "იტვირთება..." : loading ? "ინახება..." : "შენახვა"}
               </button>
               <button type="button" onClick={handleDelete} className="evid-delete-btn">
                 წაშლა

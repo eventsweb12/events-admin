@@ -25,6 +25,11 @@ const EventSchema = new mongoose.Schema(
     mainImage: { type: String, required: true }, // only required image
     gallery: [{ type: String }],
 
+    // subset of `gallery` (or standalone) urls picked to show in the carousel
+    carouselImages: [{ type: String }],
+
+    video: { type: String }, // uploaded video url
+
     slug: { type: String, unique: true, sparse: true },
   },
   { timestamps: true }

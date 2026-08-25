@@ -39,6 +39,9 @@ export default function EventsPage() {
   const [form, setForm] = useState(emptyForm);
   const [imageFile, setImageFile] = useState(null);
   const [galleryFiles, setGalleryFiles] = useState([]);
+  const [galleryPreviews, setGalleryPreviews] = useState([]);
+  const [carouselSelected, setCarouselSelected] = useState(new Set());
+  const [videoFile, setVideoFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -52,8 +55,33 @@ export default function EventsPage() {
     loadEvents();
   }, []);
 
+  // build/revoke object-URL previews whenever the gallery selection changes
+  useEffect(() => {
+    const urls = galleryFiles.map((file) => URL.createObjectURL(file));
+    setGalleryPreviews(urls);
+    return () => urls.forEach((url) => URL.revokeObjectURL(url));
+  }, [galleryFiles]);
+
   function updateBilingual(field, lang, value) {
     setForm({ ...form, [field]: { ...form[field], [lang]: value } });
+  }
+
+  function handleGalleryChange(e) {
+    const files = Array.from(e.target.files || []);
+    setGalleryFiles(files);
+    setCarouselSelected(new Set()); // reset picks whenever the file list changes
+  }
+
+  function toggleCarouselPick(index) {
+    setCarouselSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
   }
 
   // Uploads straight to Cloudinary from the browser (compressing first
@@ -87,6 +115,15 @@ export default function EventsPage() {
       if (galleryFiles.length > 0) {
         gallery = await Promise.all(galleryFiles.map(uploadFile));
       }
+
+      // carouselSelected holds indices into galleryFiles/gallery (same order,
+      // since Promise.all preserves it) — map those back to the uploaded urls
+      const carouselImages = gallery.filter((_, i) => carouselSelected.has(i));
+
+      let video;
+      if (videoFile) {
+        video = await uploadFile(videoFile);
+      }
       setUploading(false);
 
       const slug = slugify(form.eventName.eng || form.eventName.geo);
@@ -97,6 +134,9 @@ export default function EventsPage() {
         gallery,
         slug,
       };
+
+      if (carouselImages.length > 0) payload.carouselImages = carouselImages;
+      if (video) payload.video = video;
 
       // only include optional fields if actually filled in
       const title = cleanBilingual(form.title);
@@ -132,9 +172,11 @@ export default function EventsPage() {
       setForm(emptyForm);
       setImageFile(null);
       setGalleryFiles([]);
+      setCarouselSelected(new Set());
+      setVideoFile(null);
       await loadEvents();
     } catch (err) {
-      alert("სურათის ატვირთვა ვერ მოხერხდა");
+      alert("ატვირთვა ვერ მოხერხდა");
     }
 
     setLoading(false);
@@ -345,7 +387,7 @@ export default function EventsPage() {
               />
             </div>
 
-            {/* Gallery (optional, multiple) */}
+            {/* Gallery (optional, multiple) + carousel picker */}
             <div className="ev-field">
               <label className="ev-field-label">დამატებითი ფოტოები<span className="optional">(არასავალდებულო)</span></label>
               <input
@@ -353,15 +395,50 @@ export default function EventsPage() {
                 accept="image/*"
                 multiple
                 className="ev-file-input"
-                onChange={(e) => setGalleryFiles(Array.from(e.target.files || []))}
+                onChange={handleGalleryChange}
               />
-              {galleryFiles.length > 0 && (
-                <p className="ev-hint">{galleryFiles.length} ფოტო არჩეულია</p>
+              {galleryPreviews.length > 0 && (
+                <>
+                  <p className="ev-hint">
+                    {galleryFiles.length} ფოტო არჩეულია — მონიშნეთ რომელი გამოჩნდეს კარუსელში
+                  </p>
+                  <div className="ev-gallery-grid">
+                    {galleryPreviews.map((src, i) => {
+                      const picked = carouselSelected.has(i);
+                      return (
+                        <button
+                          type="button"
+                          key={src}
+                          className={`ev-gallery-thumb${picked ? " is-picked" : ""}`}
+                          onClick={() => toggleCarouselPick(i)}
+                        >
+                          <img src={src} alt="" />
+                          <span className="ev-gallery-check">{picked ? "✓" : ""}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {carouselSelected.size > 0 && (
+                    <p className="ev-hint">{carouselSelected.size} ფოტო კარუსელისთვის</p>
+                  )}
+                </>
               )}
             </div>
 
+            {/* Video (optional) */}
+            <div className="ev-field">
+              <label className="ev-field-label">ვიდეო<span className="optional">(არასავალდებულო)</span></label>
+              <input
+                type="file"
+                accept="video/*"
+                className="ev-file-input"
+                onChange={(e) => setVideoFile(e.target.files[0] || null)}
+              />
+              {videoFile && <p className="ev-hint">{videoFile.name}</p>}
+            </div>
+
             <button type="submit" disabled={loading} className="ev-submit-btn">
-              {uploading ? "სურათები იტვირთება..." : loading ? "ემატება..." : "ივენთის დამატება"}
+              {uploading ? " იტვირთება..." : loading ? "ემატება..." : "ივენთის დამატება"}
             </button>
           </form>
         </div>
