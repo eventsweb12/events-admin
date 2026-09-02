@@ -10,6 +10,7 @@ const emptyForm = {
   title: { ka: "", en: "" },
   excerpt: { ka: "", en: "" },
   content: { ka: "", en: "" },
+  source: { name: "", url: "" },
 };
 
 export default function BlogPage() {
@@ -34,6 +35,13 @@ export default function BlogPage() {
     setForm((prev) => ({
       ...prev,
       [field]: { ...prev[field], [lang]: value },
+    }));
+  }
+
+  function updateSource(key, value) {
+    setForm((prev) => ({
+      ...prev,
+      source: { ...prev.source, [key]: value },
     }));
   }
 
@@ -88,13 +96,23 @@ export default function BlogPage() {
       alert("კონტენტი საჭიროა ორივე ენაზე");
       return;
     }
+    if ((form.source.name && !form.source.url) || (!form.source.name && form.source.url)) {
+      alert("წყაროს დამატებისას საჭიროა სახელიც და ლინკიც");
+      return;
+    }
 
     setLoading(true);
+
+    const payload = {
+      ...form,
+      images,
+      source: form.source.name && form.source.url ? form.source : undefined,
+    };
 
     const res = await fetch("/api/blog", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, images }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -202,7 +220,27 @@ export default function BlogPage() {
 
             <div className="blog-field">
               <label className="blog-field-label">
-                სურათები<span className="optional">(არასავალდებულო — 1 სურათი ან რამდენიმე სლაიდერისთვის)</span>
+                წყარო<span className="optional">(არასავალდებულო — თუ ტექსტი სხვა საიტიდანაა გადმოცემული)</span>
+              </label>
+              <div className="blog-source-row">
+                <input
+                  className="blog-input"
+                  placeholder="საიტის სახელი (მაგ. Forbes.ge)"
+                  value={form.source.name}
+                  onChange={(e) => updateSource("name", e.target.value)}
+                />
+                <input
+                  className="blog-input"
+                  placeholder="ლინკი ორიგინალ სტატიაზე"
+                  value={form.source.url}
+                  onChange={(e) => updateSource("url", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="blog-field">
+              <label className="blog-field-label">
+                სურათები<span className="optional">(არასავალდებულო — სურათი)</span>
               </label>
               <input
                 type="file"

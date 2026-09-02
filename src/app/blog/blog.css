@@ -540,3 +540,21 @@
 .rte-lang-pane-hidden {
   display: none;
 }
+
+.blog-source-row,
+.blid-source-row {
+  display: flex;
+  gap: 12px;
+}
+
+.blog-source-row .blog-input,
+.blid-source-row .blid-input {
+  flex: 1;
+}
+
+@media (max-width: 640px) {
+  .blog-source-row,
+  .blid-source-row {
+    flex-direction: column;
+  }
+}

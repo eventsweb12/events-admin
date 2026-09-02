@@ -23,7 +23,7 @@ export async function POST(request) {
   await connectDB();
   const body = await request.json();
 
-  const { title, content, images, excerpt, published, publishedAt } = body;
+  const { title, content, images, excerpt, published, publishedAt, source } = body;
 
   // ვალიდაცია — ორივე ენა სავალდებულოა
   if (!title?.ka || !title?.en) {
@@ -40,12 +40,21 @@ export async function POST(request) {
     );
   }
 
+  // წყარო optional-ია, მაგრამ თუ name ან url ერთ-ერთი შევსებულია — ორივე სავალდებულოა
+  if (source && (source.name || source.url) && !(source.name && source.url)) {
+    return Response.json(
+      { error: "წყაროს დამატებისას საჭიროა სახელიც და ლინკიც" },
+      { status: 400 }
+    );
+  }
+
   try {
     const post = await BlogPost.create({
       title,
       content,
       images: images || [],
       excerpt: excerpt || {},
+      source: source?.name && source?.url ? { name: source.name, url: source.url } : undefined,
       published: published ?? true,
       publishedAt: publishedAt || Date.now(),
     });

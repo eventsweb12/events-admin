@@ -24,6 +24,7 @@ export default function EditBlogPage() {
           title: data.title || { ka: "", en: "" },
           excerpt: data.excerpt || { ka: "", en: "" },
           content: data.content || { ka: "", en: "" },
+          source: data.source || { name: "", url: "" },
         });
         setImages(data.images || []);
       });
@@ -33,6 +34,13 @@ export default function EditBlogPage() {
     setForm((prev) => ({
       ...prev,
       [field]: { ...prev[field], [lang]: value },
+    }));
+  }
+
+  function updateSource(key, value) {
+    setForm((prev) => ({
+      ...prev,
+      source: { ...prev.source, [key]: value },
     }));
   }
 
@@ -87,13 +95,23 @@ export default function EditBlogPage() {
       alert("კონტენტი საჭიროა ორივე ენაზე");
       return;
     }
+    if ((form.source.name && !form.source.url) || (!form.source.name && form.source.url)) {
+      alert("წყაროს დამატებისას საჭიროა სახელიც და ლინკიც");
+      return;
+    }
 
     setLoading(true);
+
+    const payload = {
+      ...form,
+      images,
+      source: form.source.name && form.source.url ? form.source : undefined,
+    };
 
     const res = await fetch(`/api/blog/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, images }),
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -192,6 +210,26 @@ export default function EditBlogPage() {
                 value={form.excerpt?.[activeLang] || ""}
                 onChange={(e) => updateField("excerpt", activeLang, e.target.value)}
               />
+            </div>
+
+            <div className="blid-field">
+              <label className="blid-field-label">
+                წყარო<span className="optional">(არასავალდებულო)</span>
+              </label>
+              <div className="blid-source-row">
+                <input
+                  className="blid-input"
+                  placeholder="საიტის სახელი (მაგ. Forbes.ge)"
+                  value={form.source?.name || ""}
+                  onChange={(e) => updateSource("name", e.target.value)}
+                />
+                <input
+                  className="blid-input"
+                  placeholder="ლინკი ორიგინალ სტატიაზე"
+                  value={form.source?.url || ""}
+                  onChange={(e) => updateSource("url", e.target.value)}
+                />
+              </div>
             </div>
 
             <div className="blid-field">

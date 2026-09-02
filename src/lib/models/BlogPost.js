@@ -37,6 +37,12 @@ const BlogPostSchema = new mongoose.Schema(
       },
     ],
 
+    // წყარო — თუ პოსტი სხვა საიტიდან მოკლედ გადმოცემულია, სავალდებულოა მითითება
+    source: {
+      name: { type: String },
+      url: { type: String },
+    },
+
     // გამოქვეყნების თარიღი (განსხვავებული createdAt-ისგან, თუ გინდათ ცალკე კონტროლი)
     publishedAt: { type: Date, default: Date.now },
 
